@@ -1,38 +1,34 @@
 # •	Dans ce fichier, je définis et je stocke les différents kernels que j'utilise 
 # Importer les noyaux depuis scikit-learn
-from sklearn.gaussian_process.kernels import RBF, Matern, DotProduct
 
-#kernel RBF :
 
-def get_rbf_kernel(length_scale=1.0):
+from sklearn.gaussian_process.kernels import RBF, Matern, RationalQuadratic, WhiteKernel
+
+def get_rbf_kernel(length_scale=1.0, alpha=0.1):
     """
-    Renvoie un noyau RBF avec une longueur d'échelle donnée.
+    Renvoie un noyau RBF avec une longueur d'échelle adaptée aux données financières.
     """
-    return RBF(length_scale=length_scale)
+    return RBF(length_scale=length_scale) + WhiteKernel(noise_level=alpha)
 
-#kernel lineaire (DotProduct) :
-def get_linear_kernel():
+def get_rational_quadratic_kernel(length_scale=1.0, alpha=1.0):
     """
-    Renvoie un noyau linéaire (produit scalaire).
+    Renvoie un noyau Rational Quadratic avec des paramètres adaptés.
     """
-    return DotProduct()
+    return RationalQuadratic(length_scale=length_scale, alpha=alpha) + WhiteKernel(noise_level=0.1)
 
-
-
-
-#kernel matern:
-
-
-def get_matern_kernel(length_scale=1.0, nu=1.5):
+def get_matern_kernel(length_scale=3.0, nu=1.5):
     """
-    Renvoie un noyau Matérn avec une longueur d'échelle et un paramètre de lissité (nu).
+    Renvoie un noyau Matérn avec des paramètres adaptés.
     """
-    return Matern(length_scale=length_scale, nu=nu)
-
-# je pourrais combiner ici les kernels 
-
+    return Matern(length_scale=length_scale, nu=nu) + WhiteKernel(noise_level=0.1)
 
 def get_combined_kernel():
-
-
-    combined_kernel = RBF(length_scale=1.0) + DotProduct() + Matern(length_scale=1.0, nu=1.5)
+    """
+    Combine les kernels avec des poids optimisés pour les données financières.
+    """
+    k1 = 1.0 * RBF(length_scale=3.0)
+    k2 = 0.3 * RationalQuadratic(length_scale=3.0, alpha=1.0)
+    k3 = 0.5 * Matern(length_scale=3.0, nu=1.5)
+    noise = WhiteKernel(noise_level=0.1)
+    
+    return k1 + k2 + k3 + noise
