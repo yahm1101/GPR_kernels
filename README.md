@@ -1,8 +1,5 @@
 
-
-
 # modélisation des noyaux spatio-temporels financiers
-
 
 
 ## Description
@@ -14,11 +11,10 @@ Scikit-learn : pour l'implémentation de la régression par processus gaussien e
 Pandas : pour la manipulation des données.
 Matplotlib / Seaborn : pour la visualisation des prédictions.
 Git et GitLab : pour la gestion du code source et la collaboration.
-
+    
 
 
 
 ## Authors and acknowledgment
 Mohamed Yahya sous la supervision du Pr Shengrui Wang et Abdallah Aaraba 
-
 

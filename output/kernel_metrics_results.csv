@@ -1,0 +1,3 @@
+Kernel name,RMSE,MAE,MSE,MAPE,LML,Hyperparameters
+RBF,5.622541759919831,3.8067354743686606,31.612975842042392,0.018895389706674558,680.442010968779,"{'k1': RBF(length_scale=2.99), 'k2': WhiteKernel(noise_level=0.00954), 'k1__length_scale': 2.9942581326643904, 'k1__length_scale_bounds': (0.01, 10000.0), 'k2__noise_level': 0.009538210429282322, 'k2__noise_level_bounds': (1e-10, 10.0)}"
+Matern,5.885858181982221,4.113659273220189,34.64332653840706,0.02143150590291133,673.6164586748082,"{'k1': Matern(length_scale=6.78, nu=1.5), 'k2': WhiteKernel(noise_level=0.00937), 'k1__length_scale': 6.778890275993716, 'k1__length_scale_bounds': (0.01, 10000.0), 'k1__nu': 1.5, 'k2__noise_level': 0.009367198872250519, 'k2__noise_level_bounds': (1e-10, 10.0)}"
