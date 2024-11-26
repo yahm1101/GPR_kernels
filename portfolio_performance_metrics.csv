@@ -1,0 +1,5 @@
+Kernel,Cumulative Return,Sharpe Ratio,Monthly Return,Volatility
+RBF,43.8956%,2.2351,3.5055%,5.4331%
+Matern,43.8886%,2.2347,3.5051%,5.4334%
+Rational Quadratic,43.8959%,2.2351,3.5055%,5.4331%
+Combined,34.4322%,1.9812,2.8464%,4.9768%

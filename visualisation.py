@@ -60,3 +60,5 @@ def plot_training_progress(training_losses, val_losses=None):
     plt.legend() 
     plt.grid(True) # Ajouter une grille
     plt.show()
+
+
