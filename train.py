@@ -250,7 +250,7 @@ class FinancialML:
     
 def main():
     financial_ml = FinancialML(
-        ticker='IBM',  # Meta Platforms, Inc. (anciennement Facebook, Inc.)
+        ticker='IBM',  # IBM ( International Business Machines Corporation)
         start_date='2019-09-01',  # Date de début
         end_date='2022-09-01',    # Date de fin    
         window_size=5,            # Taille de la fenêtre   
