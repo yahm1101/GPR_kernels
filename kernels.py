@@ -1,6 +1,6 @@
 from sklearn.gaussian_process.kernels import RBF, Matern, RationalQuadratic, WhiteKernel
 
-def get_rbf_kernel(length_scale=5.0): # Define the RBF kernel with adjusted parameters Plus length_scale est grand, plus la fonction est "lisse"
+def get_rbf_kernel(length_scale=5.0): # defini  thele  RBF kernel avec des parametres ajustés, plus le length scale est petit, plus le modèle est flexible et plus il est grand, plus le modèle est lisse. Ici, le length scale est initialisé à 5.0 et optimisé pour un meilleur ajustement des données
     
 # le length scale est initialisé à 5.0 et optimisé pour un meilleur ajustement des données
     """RBF kernel avec des paramètres ajustés.""" 

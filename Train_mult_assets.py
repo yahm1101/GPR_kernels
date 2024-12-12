@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.gaussian_process import GaussianProcessRegressor
-from visualisation import plot_predictions_with_uncertainty
 from kernels import get_rbf_kernel, get_matern_kernel, get_rational_quadratic_kernel, get_combined_kernel
 from train import custom_optimizer
 import matplotlib.pyplot as plt
@@ -17,9 +16,9 @@ class MonthlyPortfolioML:
 
     def __init__(self, tickers: list, start_date: str, end_date: str, window_size: int = 5):
         self.tickers = tickers            # Liste des actifs
-        self.start_date = start_date      
-        self.end_date = end_date
-        self.window_size = window_size
+        self.start_date = start_date      # Date de début 
+        self.end_date = end_date          # Date de fin
+        self.window_size = window_size    # Taille de la fenêtre pour les séquences de rendements 
         
         # Dictionnaires pour stocker les données et modèles par actif
         self.data = {}                    # Données mensuelles par actif (actif,prix de clôture,rendements)
@@ -79,7 +78,7 @@ class MonthlyPortfolioML:
     
     def prepare_all_data(self): # Combine les séquences pour tous les actifs et prépare les ensembles d'entraînement et de test
         """
-        Prépare les données selon les équations (13) et (14)
+        Prépare les données pour l'entraînement et le test.
         """
         X_all_train = []  # Séquences d'entraînement pour tous les actifs
         y_all_train = []  # Rendements cibles d'entraînement pour tous les actifs
@@ -112,11 +111,10 @@ class MonthlyPortfolioML:
 
     def inverse_transform_targets(self, predictions):
         """
-        Transforms the normalized predictions back to their original scale.
-        This should only be applied to the predictions, not during training or testing.
+        Dénormalise les prédictions pour les rendre comparables aux rendements réels.
         """
         if hasattr(self, 'y_scaler') and self.y_scaler:
-            # Use the y_scaler to transform normalized predictions back to the original scale
+            # utilisation de l'attribut y_scaler pour dénormaliser les prédictions
             return self.y_scaler.inverse_transform(predictions.reshape(-1, 1)).flatten()
         else:
             raise ValueError("y_scaler is not defined. Ensure normalize_data() is called before this.")
@@ -133,7 +131,7 @@ class MonthlyPortfolioML:
             "RBF": get_rbf_kernel(),
             "Matern": get_matern_kernel(),
             "Rational Quadratic": get_rational_quadratic_kernel(),
-           # "Combined": get_combined_kernel()
+            "Combined": get_combined_kernel()
         }
 
         # Pour chaque kernel
@@ -143,26 +141,26 @@ class MonthlyPortfolioML:
             # Création du modèle GPR
             model = GaussianProcessRegressor(   # la matrice de covariance utilisée par le modèle GPR capture la similarité entre les séquences des actifs. 
                 kernel=kernel,
-                n_restarts_optimizer=40,
+                n_restarts_optimizer=40, # Nombre de redémarrages pour l'optimisation 
                 random_state=0,
-                optimizer=custom_optimizer
+                optimizer=custom_optimizer  # Optimiseur personnalisé pour les hyperparamètres
             )
 
             # Entraînement sur l'ensemble Dr complet
-            model.fit(self.X_train, self.y_train)
+            model.fit(self.X_train, self.y_train) 
 
-            self.models[kernel_name] = model
+            self.models[kernel_name] = model  # Stockage du modèle pour ce kernel
             print(f"Log-Marginal Likelihood: {model.log_marginal_likelihood_value_:.2f}")  # Affichage de la vraisemblance marginale 
 
     def predict_returns(self):
         """
         Prédictions sur l'ensemble Ds complet pour chaque kernel.
         """
-        self.predictions = {}
-        self.uncertainties = {}
+        self.predictions = {} # Prédictions par kernel (kernel,prédictions)
+        self.uncertainties = {} # Incertitudes par kernel (kernel,incertitudes)
 
         # Pour chaque kernel
-        for kernel_name, model in self.models.items():
+        for kernel_name, model in self.models.items(): 
             # Prédictions sur tout l'ensemble de test
             pred_norm, std_norm = model.predict(self.X_test, return_std=True)
             
@@ -177,81 +175,92 @@ class MonthlyPortfolioML:
 
     def generate_kernel_tables(self):
         """
-        Crée les tableaux selon l'équation (23) du PDF avec les poids calculés selon (20) et (21).
-        """
-        self.kernel_tables = {}
-        n_test_periods = len(self.X_test) // len(self.tickers)
-        
-        # Inverse transform y_test once
-        y_test_denorm = self.inverse_transform_targets(self.y_test)
-        
-        for kernel_name, model in self.models.items():
-            kernel_table = pd.DataFrame(index=range(n_test_periods))
-            
-            for t in range(n_test_periods):
-                scores_t = {}
-                for i, ticker in enumerate(self.tickers):
-                    index = i * n_test_periods + t
-                    μ = self.predictions[kernel_name][index]
-                    σ = self.uncertainties[kernel_name][index]
-                    scores_t[ticker] = max(0, μ / σ) if σ != 0 else 0
-                
-                total_score = sum(scores_t.values())
-                if total_score != 0:
-                    weights_t = {ticker: score / total_score for ticker, score in scores_t.items()}
-                else:
-                    weights_t = {ticker: 1.0 / len(self.tickers) for ticker in self.tickers}
-                
-                for i, ticker in enumerate(self.tickers):
-                    index = i * n_test_periods + t
-                    Ra_t = y_test_denorm[index]
-                    kernel_table.loc[t, f'{ticker}(w*R)'] = weights_t[ticker] * Ra_t
-            
-            kernel_table['R(κ)π,t'] = kernel_table.sum(axis=1)
-            self.kernel_tables[kernel_name] = kernel_table
+        Crée les 4 tableaux  avec les poids calculés .
 
+        # n_test_periods: nombre de périodes dans l'ensemble test
+        # len(self.X_test): nombre total d'observations de test (tous actifs confondus)
+        # len(self.tickers): nombre d'actifs
+        # Division donne le nombre de périodes par actif
+        """
+        self.kernel_tables = {}   # dictionnaire pour stocker les tableaux par kernel (kernel,tableau) 
+        n_test_periods = len(self.X_test) // len(self.tickers) # la division entière donne le nombre de périodes par actif 
+        
+        for kernel_name, model in self.models.items(): # Pour chaque kernel 
+            # Tableau pour ce kernel
+            kernel_table = pd.DataFrame(index=range(n_test_periods)) # Création d'un DataFrame vide pour chaque kernel, avec autant de lignes que de périodes de test.
+            y_test_denorm = self.y_scaler.inverse_transform(self.y_test.reshape(-1, 1)).flatten()
+            # Pour chaque période t dans l'ensemble test
+            for t in range(n_test_periods): # Pour chaque période de test 
+                # 1. Calcul des scores pour tous les actifs au temps t 
+                scores_t = {} # dictionnaire pour stocker les scores pour chaque actif
+                for i, ticker in enumerate(self.tickers): # Pour chaque actif 
+                     # i : index de l'actif (0 pour AAPL, 1 pour MSFT, etc.)
+                    # Pour chaque actif, on récupère la prédiction et l'incertitude associée à la période t
+                    μ = self.predictions[kernel_name][i * n_test_periods + t] # Prédiction de rendement pour l'actif a au temps t
+                    σ = self.uncertainties[kernel_name][i * n_test_periods + t] # Incertitude associée à la prédiction de rendement pour l'actif a au temps t
+                    scores_t[ticker]=max(0,μ/σ) if σ != 0 else 0   # sa,t = μa,t/σa,t 
+                
+                # 2. Normalisation des scores pour obtenir les poids 
+                total_score = sum(scores_t.values())  # Calcul de la somme des scores  
+
+                # Calcul des poids pour chaque actif au temps t (wa,t)
+                weights_t = {ticker: score/total_score for ticker, score in scores_t.items()} if total_score != 0 else {ticker: 1.0/len(self.tickers) for ticker in self.tickers}
+                for i, ticker in enumerate(self.tickers): # Pour chaque actif 
+
+                    # 3. Calcul des rendements totaux pour chaque actif au temps t 
+                    Ra_t = y_test_denorm[i * n_test_periods + t]  # Utilisation des rendements réels pour chaque actif au temps t (Ra,t) pour calculer le rendement total R(κ)π,t 
+
+                     # calcul du rendement réel de l'actif a au temps t  ( i est l'index de l'actif)
+                    # La formule i * n_test_periods + t nous donne l'index correct dans self.y_test pour l'actif a et le temps t.
+                    # les rendements réels sont stockés dans self.y_test, qui est un vecteur contenant les rendements réels de tous les actifs pour toutes les périodes de test. 
+                  
+                    # Stockage dans la table à la ligne t, colonne f'{ticker}(w*R)'
+                    kernel_table.loc[t, f'{ticker}(w*R)'] = weights_t[ticker] * Ra_t # calcul de wa,t * Ra,t 
+
+            #Cette partie implémente la composante wa,t * Ra,t de l'équation . La somme de toutes ces contributions donnera R(κ)π,t.4
+            # 4. Calcul du rendement total R(κ)π,t 
+            kernel_table['R(κ)π,t'] = kernel_table.sum(axis=1) # calcul de la somme des contributions de chaque actif pour obtenir le rendement total R(κ)π,t ( axis=1 pour sommer les colonnes)
+            self.kernel_tables[kernel_name] = kernel_table  # Stockage du tableau pour ce kernel
 
     
 
 
-    def calculate_total_returns(self):  # Calcul des rendements totaux (eq.25) 
+    def calculate_total_returns(self):  # Calcul des rendements totaux 
         """
-        Équation (25) du PDF : calcule (1 + R(κ)π,Ts) = ∏(1 + R(κ)π,t)
+         calcule (1 + R(κ)π,Ts) = ∏(1 + R(κ)π,t)
         """
         self.total_returns = {} # dictionnaire pour stocker les rendements totaux par kernel (kernel,rendement total)
         
         for kernel_name, table in self.kernel_tables.items():  # Pour chaque kernel
             portfolio_returns = table['R(κ)π,t']  # Récupération des rendements totaux pour ce kernel
-            total_return = np.prod(1 + portfolio_returns) - 1  # Calcul du rendement total (eq. 25)
+            total_return = np.prod(1 + portfolio_returns) - 1  # Calcul du rendement total 
             self.total_returns[kernel_name] = total_return  # Stockage du rendement total pour ce kernel
 
-    def calculate_sharpe_ratios(self):  # Calcul des ratios de Sharpe (eq.26)
+    def calculate_sharpe_ratios(self):  # Calcul des ratios de Sharpe (
         """
-        Équation (26) du PDF : calcule S(κ)π,Ts = R̄(κ)π / σ[R(κ)π,t]
+         calcule S(κ)π,Ts = R̄(κ)π / σ[R(κ)π,t]
         """
         self.sharpe_ratios = {}  # Dictionnaire pour stocker les ratios de Sharpe par kernel
         
-        for kernel_name, table in self.kernel_tables.items():  # Pour chaque kernel
-            portfolio_returns = table['R(κ)π,t']  # Série des rendements
+        for kernel_name, table in self.kernel_tables.items():  # Pour chaque kernel 
+            portfolio_returns = table['R(κ)π,t']  # Série des rendements totaux pour ce kernel
             
             mean_return = np.mean(portfolio_returns)  # Moyenne des rendements
             std_dev = np.std(portfolio_returns)  # Écart-type des rendements
             
-            if std_dev != 0:
-                sharpe = mean_return / std_dev  # Calcul du ratio de Sharpe
+            if std_dev != 0:  # Vérification pour éviter la division par zéro 
+                sharpe = mean_return / std_dev  # 
             else:
                 sharpe = 0  # Ou gérer le cas où l'écart-type est zéro
             
             self.sharpe_ratios[kernel_name] = sharpe  # Stockage du ratio de Sharpe pour ce kernel
-
-
     def display_results(self):
         """
         Affiche les tableaux et les métriques finales.
         """
         # Affiche d'abord les tableaux détaillés
         print("\nTableaux détaillés par kernel :")
-        for kernel_name, table in self.kernel_tables.items():
+        for kernel_name, table in self.kernel_tables.items():  # Pour chaque kernel 
             print(f"\n{kernel_name} :")
             print(table.round(4))  # Affichage des tableaux avec 4 décimales
         
@@ -287,10 +296,10 @@ class MonthlyPortfolioML:
         print("\nGénération des tableaux par kernel...")
         self.generate_kernel_tables()
         
-        print("\nCalcul des rendements totaux (eq.25)...")
+        print("\nCalcul des rendements totaux ...")
         self.calculate_total_returns()
         
-        print("\nCalcul des ratios de Sharpe (eq.26)...")
+        print("\nCalcul des ratios de Sharpe ...")
         self.calculate_sharpe_ratios()
         
         print("\nAffichage des résultats...")
@@ -298,12 +307,12 @@ class MonthlyPortfolioML:
 
 if __name__ == '__main__':
         # Liste des actifs à analyser
-        tickers = ['RBLX', 'ZM', 'PINS', 'SNAP', 'PLTR']
+        tickers = ['IBM', 'MSFT', 'ADBE', 'PYPL', 'CRM',]
         
         portfolio = MonthlyPortfolioML(
             tickers=tickers,
-            start_date='2016-01-01',
-            end_date='2023-12-31',
+            start_date='2018-01-01',
+            end_date='2021-12-31',
             window_size=5  # 5 mois de fenêtre glissante
         )
         

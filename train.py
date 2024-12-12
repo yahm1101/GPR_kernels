@@ -250,9 +250,9 @@ class FinancialML:
     
 def main():
     financial_ml = FinancialML(
-        ticker='META',  # Meta Platforms, Inc. (anciennement Facebook, Inc.)
+        ticker='IBM',  # Meta Platforms, Inc. (anciennement Facebook, Inc.)
         start_date='2019-09-01',  # Date de début
-        end_date='2023-09-01',    # Date de fin    
+        end_date='2022-09-01',    # Date de fin    
         window_size=5,            # Taille de la fenêtre   
         test_size=0.2             # Taille de l'ensemble de test  
     )
